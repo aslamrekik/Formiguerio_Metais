@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY engine /app/engine
 COPY api/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN pip install --no-cache-dir -e /app/engine \
+ && pip install --no-cache-dir -r /app/requirements.txt
 COPY api /app/api
 
 ENV PYTHONPATH=/app/api
