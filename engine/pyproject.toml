@@ -1,0 +1,15 @@
+[project]
+name = "liga-engine"
+version = "0.1.0"
+description = "Motor de calculo e calibracao do LIGA APP"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "scipy>=1.11"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov>=5.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.report]
+fail_under = 90

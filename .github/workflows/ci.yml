@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  engine:
+    name: Motor (casos reais)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e "engine[dev]"
+      - name: Testes e cobertura minima de 90%
+        run: pytest engine/tests -q --cov=liga_engine --cov-report=term-missing
+        # A cobertura minima de 90% vale a partir da US-07; ate la os testes estao marcados como skip.
+
+  api:
+    name: API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update && sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libcairo2
+      - run: pip install -e engine && pip install -r api/requirements-dev.txt
+      - run: cd api && pytest -q
+
+  web:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: npm, cache-dependency-path: web/package.json }
+      - run: cd web && npm install
+      - run: cd web && npm run build

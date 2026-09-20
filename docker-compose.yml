@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: liga
+      POSTGRES_PASSWORD: liga
+      POSTGRES_DB: liga
+    ports: ["5432:5432"]
+    volumes: ["dados:/var/lib/postgresql/data"]
+
+  api:
+    build: { context: ., dockerfile: api/Dockerfile }
+    environment:
+      DATABASE_URL: postgresql+psycopg://liga:liga@db:5432/liga
+      JWT_SECRET: desenvolvimento
+      ADMIN_EMAIL: admin@liga.app
+      ADMIN_PASSWORD: liga123
+      CORS_ORIGIN: http://localhost:5173
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports: ["8000:8000"]
+    depends_on: [db]
+
+volumes:
+  dados:

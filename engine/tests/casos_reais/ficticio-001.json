@@ -1,0 +1,18 @@
+{
+  "observacao": "CASO FICTICIO, so para mostrar o formato. Substituir pelos casos do cliente.",
+  "liga": {
+    "id": "a356",
+    "nome": "A356",
+    "faixas": [
+      {"elemento": "Si", "min_pct": 6.5, "max_pct": 7.5},
+      {"elemento": "Mg", "min_pct": 0.25, "max_pct": 0.45},
+      {"elemento": "Fe", "min_pct": 0.0, "max_pct": 0.2}
+    ]
+  },
+  "materiais": [
+    {"id": "al-prim", "nome": "Aluminio primario", "composicao": {"Si": 0.05, "Fe": 0.06}, "custo_kg": 18.0, "estoque_kg": 2000},
+    {"id": "al-si-20", "nome": "Liga-mae Al-Si 20%", "composicao": {"Si": 20.0, "Fe": 0.15}, "custo_kg": 26.0, "estoque_kg": 500}
+  ],
+  "banho": {"massa_kg": 1000, "composicao": {"Si": 6.15, "Mg": 0.33, "Fe": 0.12}, "capacidade_kg": 1500},
+  "esperado": {"status": "OK", "composicao_prevista": {"Si": 6.5, "Mg": 0.32, "Fe": 0.12}}
+}

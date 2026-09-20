@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Uso em tablet no chao de fabrica (DAS 14): alvos de toque grandes. */
+button, input, select { min-height: 44px; }
