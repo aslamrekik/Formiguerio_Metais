@@ -21,4 +21,4 @@ TODO US-09 (Ruann, Grokoski).
 def calcular_correcao(banho, liga, materiais, recuperacao: dict = None,
                       versao_calibracao: str = None):
     """Devolve ResultadoCorrecao: adicoes em kg, composicao prevista e desvios."""
-    raise NotImplementedError("US-09")
+    raise NotImplementedError("US-09")  # pragma: no cover
