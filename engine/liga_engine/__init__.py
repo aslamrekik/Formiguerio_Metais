@@ -17,6 +17,7 @@ from .tipos import (
     ResultadoCorrecao,
 )
 from .mistura import composicao_mistura
+from .correcao import calcular_correcao
 
 __all__ = [
     "VERSAO_MOTOR",
@@ -31,4 +32,5 @@ __all__ = [
     "Desvio",
     "ResultadoCorrecao",
     "composicao_mistura",
+    "calcular_correcao",
 ]
