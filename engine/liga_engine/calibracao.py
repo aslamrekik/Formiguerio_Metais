@@ -19,4 +19,4 @@ RHO_MIN, RHO_MAX = 0.50, 1.05
 
 def calcular_fatores(corridas: list, elementos: tuple) -> dict:
     """Devolve {elemento: recuperacao}. Vazio quando nao ha dados suficientes."""
-    raise NotImplementedError("US-17")
+    raise NotImplementedError("US-17")  # pragma: no cover
