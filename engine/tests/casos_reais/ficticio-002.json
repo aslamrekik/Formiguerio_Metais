@@ -1,0 +1,15 @@
+{
+  "observacao": "CASO FICTICIO. Mostra o formato de um caso INVIAVEL. Nenhum material chega a Si 21%, entao o banho nao pode ser enquadrado: o motor deve devolver INVIAVEL apontando o Si. Substituir pelos casos do cliente.",
+  "liga": {
+    "id": "impossivel",
+    "nome": "Liga impossivel (teste)",
+    "faixas": [
+      {"elemento": "Si", "min_pct": 21.0, "max_pct": 25.0}
+    ]
+  },
+  "materiais": [
+    {"id": "al-si-20", "nome": "Liga-mae Al-Si 20%", "composicao": {"Si": 20.0, "Fe": 0.15}, "custo_kg": 26.0, "estoque_kg": 500}
+  ],
+  "banho": {"massa_kg": 1000, "composicao": {"Si": 6.0}, "capacidade_kg": 5000},
+  "esperado": {"status": "INVIAVEL", "elemento_limitante": "Si"}
+}
