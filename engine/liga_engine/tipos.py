@@ -101,6 +101,27 @@ class Desvio:
     dentro: bool
 
 
+@dataclass(frozen=True)
+class CorridaFinalizada:
+    """Corrida ja finalizada, usada como dado de entrada da calibracao (US-17).
+
+    adicoes: tupla de (Material, massa_kg) realmente adicionados na corrida.
+    data: qualquer valor ordenavel (ISO ou datetime) para dar mais peso as
+    corridas recentes; opcional.
+    """
+    massa_inicial: float
+    composicao_inicial: dict
+    massa_final: float
+    composicao_final: dict
+    adicoes: tuple = ()
+    data: Optional[object] = None
+
+    def elemento_adicionado(self, elemento: str) -> float:
+        """Massa*teor do elemento somada nas adicoes (kg*%), o denominador de rho."""
+        return sum(massa * material.teor(elemento)
+                   for material, massa in self.adicoes)
+
+
 @dataclass
 class ResultadoCorrecao:
     """Saida do motor de correcao (DAS 12.2).
