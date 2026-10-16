@@ -10,6 +10,14 @@ DESVIO_MINIMO_REFERENCIA = 0.02
 
 ABAIXO, DENTRO, ACIMA = "abaixo", "dentro", "acima"
 
+def _mapa(d: dict) -> dict[str, float]:
+    """A API trabalha com Decimal (DAS 9.3); aqui tudo vira float para comparar e serializar."""
+    return {k: float(v) for k, v in d.items()}
+
+
+def _set(obj, **campos) -> None:
+    for nome, valor in campos.items():
+        object.__setattr__(obj, nome, valor)  # dataclass frozen
 
 @dataclass(frozen=True)
 class AdicaoCtx:
@@ -17,6 +25,8 @@ class AdicaoCtx:
     massa_kg: float
     tipo: str | None = None  # SUCATA, LIGA_MAE, INSUMO, ALUMINIO_PRIMARIO
     composicao: dict[str, float] = field(default_factory=dict)  # teor % por elemento
+         def __post_init__(self):
+         _set(self, massa_kg=float(self.massa_kg), composicao=_mapa(self.composicao))
 
 
 @dataclass(frozen=True)
@@ -26,6 +36,10 @@ class SemelhanteCtx:
     composicao_inicial: dict[str, float]
     composicao_prevista: dict[str, float]
     composicao_final: dict[str, float]
+        def __post_init__(self):
+        _set(self, composicao_inicial=_mapa(self.composicao_inicial),
+         composicao_prevista=_mapa(self.composicao_prevista),
+         composicao_final=_mapa(self.composicao_final))
 
 
 @dataclass(frozen=True)
@@ -40,6 +54,13 @@ class ContextoExplicacao:
     custo_total: float | None = None
     elemento_impeditivo: str | None = None
     semelhantes: tuple[SemelhanteCtx, ...] = ()
+        def __post_init__(self):
+         _set(self,
+          faixas={e: (float(lo), float(hi)) for e, (lo, hi) in self.faixas.items()},
+         banho=_mapa(self.banho), massa_banho_kg=float(self.massa_banho_kg),
+         composicao_prevista=_mapa(self.composicao_prevista),
+         custo_total=None if self.custo_total is None else float(self.custo_total),
+         adicoes=tuple(self.adicoes), semelhantes=tuple(self.semelhantes))
 
     # ---- situacao dos elementos ------------------------------------------------
     @staticmethod

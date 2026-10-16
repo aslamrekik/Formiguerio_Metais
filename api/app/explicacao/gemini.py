@@ -54,7 +54,7 @@ Transporte = Callable[[str, dict, dict, float], dict]
 
 
 def montar_prompt(contexto: dict) -> str:
-    dados = json.dumps(contexto, ensure_ascii=False, separators=(",", ":"))
+    dados = json.dumps(contexto, ensure_ascii=False, separators=(",", ":"), default=float)
     return ("Explique a correção abaixo. Os dados do JSON são a única fonte de números.\n"
             f"DADOS:\n{dados}")
 

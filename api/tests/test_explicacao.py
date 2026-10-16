@@ -285,3 +285,81 @@ def test_transporte_httpx_traduz_timeout_e_http_429_em_indisponivel():
     with mock.patch.object(httpx, "post", return_value=ok) as post:
         assert _transporte_httpx("https://x", {"h": "1"}, {"c": 1}, 15.0) == {"a": 1}
         assert post.call_args.kwargs["timeout"].read == 15.0
+
+ # ------------------------------------------------------------------ US-12: nenhum calculo sem explicacao
+def test_reserva_so_e_tentado_uma_vez_e_depois_vem_a_padrao():
+    c, t = cliente(GeminiIndisponivel("HTTP 429"), GeminiIndisponivel("HTTP 429"))
+    r = explicar(contexto(), c)
+    assert r.origem == PADRAO and len(t.chamadas) == 2
+    assert "gemini-3.8-flash: HTTP 429" in r.motivo_padrao and "gemini-3.5-flash-lite" in r.motivo_padrao
+
+
+def test_erro_inesperado_na_camada_de_ia_ainda_gera_explicacao():
+    def quebrado(*_):
+        raise RuntimeError("bug qualquer")
+
+    c = ClienteGemini("k", "m1", "m2", 15.0, quebrado)
+    r = explicar(contexto(), c)
+    assert r.origem == PADRAO and "RuntimeError" in r.motivo_padrao and r.explicacao["diagnostico"]
+
+
+def test_se_ate_a_padrao_falhar_sobra_um_texto_minimo():
+    from unittest import mock
+
+    with mock.patch("app.explicacao.servico.gerar_explicacao_padrao", side_effect=ValueError("x")):
+        r = explicar(contexto(), cliente(chave="")[0])
+    assert r.origem == PADRAO and r.explicacao["diagnostico"]
+    assert [a["material"] for a in r.explicacao["adicoes"]] == ["Alumínio primário", "Liga-mãe Al-Si 20%"]
+
+
+def test_origem_e_um_dos_dois_valores_do_enum():
+    from app.explicacao.servico import OrigemExplicacao
+
+    assert {o.value for o in OrigemExplicacao} == {"GEMINI", "PADRAO"}
+    c, _ = cliente(resposta_gemini(json.dumps(boa_resposta())))
+    assert OrigemExplicacao(explicar(contexto(), c).origem) is OrigemExplicacao.GEMINI
+    assert OrigemExplicacao(explicar(contexto(), cliente(chave="")[0]).origem) is OrigemExplicacao.PADRAO
+
+
+def test_grava_na_corrida_a_origem_certa_nos_dois_caminhos():
+    ok, falha = RepoFalso(ctx=contexto()), RepoFalso(ctx=contexto())
+    gerar_explicacao("1", ok, cliente(resposta_gemini(json.dumps(boa_resposta())))[0])
+    gerar_explicacao("2", falha, cliente(GeminiIndisponivel("x"), GeminiIndisponivel("y"))[0])
+    assert ok.gravado[1] == "GEMINI" and falha.gravado[1] == "PADRAO"
+    assert falha.gravado[0]["diagnostico"]
+
+
+def test_valores_decimal_da_api_funcionam_no_prompt_validador_e_padrao():
+    from decimal import Decimal as D
+
+    ctx = ContextoExplicacao(
+        liga="A356",
+        faixas={"Si": (D("6.5"), D("7.5")), "Fe": (D("0"), D("0.20"))},
+        banho={"Si": D("6.15"), "Fe": D("0.23")}, massa_banho_kg=D("1000"), status="OK",
+        adicoes=(AdicaoCtx("Alumínio primário", D("120.0"), "ALUMINIO_PRIMARIO", {"Fe": D("0.06")}),),
+        composicao_prevista={"Si": D("6.55"), "Fe": D("0.19")}, custo_total=D("2160.00"),
+        semelhantes=(SemelhanteCtx("0141", {"Si": D("6.1")}, {"Si": D("6.7")}, {"Si": D("6.72")}),))
+    json.dumps(ctx.como_dict())  # nao pode quebrar
+    montar_prompt(ctx.como_dict())
+    padrao = gerar_explicacao_padrao(ctx)
+    json.dumps(padrao)
+    assert validar_explicacao(padrao, ctx.como_dict()).ok
+    resposta = {"diagnostico": "Fe acima do limite (0,23%).",
+                "adicoes": [{"material": "Alumínio primário", "massa_kg": 120, "motivo": "diluir Fe"}],
+                "alertas": [], "referencias": []}
+    c, _ = cliente(resposta_gemini(json.dumps(resposta)))
+    assert explicar(ctx, c).origem == GEMINI
+
+
+def test_historico_e_pdf_nunca_chamam_a_ia():
+    from app.services.explicacao import explicacao_ou_padrao
+
+    c, t = cliente()
+    salva = RepoFalso(salva=({"diagnostico": "salva"}, "GEMINI"), ctx=contexto())
+    assert explicacao_ou_padrao("1", salva).explicacao == {"diagnostico": "salva"}
+    sem = RepoFalso(ctx=contexto())
+    r = explicacao_ou_padrao("2", sem)
+    assert r.origem == PADRAO and r.explicacao["diagnostico"] and sem.gravado is None
+    with pytest.raises(CorridaNaoEncontrada):
+        explicacao_ou_padrao("3", RepoFalso())
+    assert t.chamadas == []

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from enum import Enum
 
 from .contexto import ContextoExplicacao
 from .gemini import ClienteGemini, GeminiIndisponivel
@@ -19,7 +20,14 @@ from .validador import validar_explicacao
 
 log = logging.getLogger(__name__)
 
-GEMINI, PADRAO = "GEMINI", "PADRAO"  # valores de OrigemExplicacao (DAS 7)
+
+class OrigemExplicacao(str, Enum):
+    """Gravada em corridas.origem_explicacao (DAS 7 e 11)."""
+    GEMINI = "GEMINI"
+    PADRAO = "PADRAO"
+
+
+GEMINI, PADRAO = OrigemExplicacao.GEMINI.value, OrigemExplicacao.PADRAO.value
 
 
 @dataclass(frozen=True)
@@ -37,15 +45,35 @@ def criar_cliente() -> ClienteGemini:
                          config.gemini_model_reserva, config.gemini_timeout_s)
 
 
-def _padrao(ctx: ContextoExplicacao, motivo: str) -> ResultadoExplicacao:
+def explicar_com_padrao(ctx: ContextoExplicacao, motivo: str) -> ResultadoExplicacao:
+    """Explicacao padrao (US-12). Nunca levanta excecao: ultimo recurso e um texto minimo."""
     log.warning("explicacao padrao usada: %s", motivo)
-    return ResultadoExplicacao(gerar_explicacao_padrao(ctx), PADRAO, motivo)
+    try:
+        explicacao = gerar_explicacao_padrao(ctx)
+    except Exception:  # noqa: BLE001 - 100% dos calculos precisam de explicacao
+        log.exception("falha ao montar a explicacao padrao")
+        explicacao = {
+            "diagnostico": "Explicação detalhada indisponível. Consulte o resultado do cálculo.",
+            "adicoes": [{"material": a.material, "massa_kg": a.massa_kg, "motivo": ""}
+                        for a in getattr(ctx, "adicoes", ())],
+            "alertas": [], "referencias": [],
+        }
+    return ResultadoExplicacao(explicacao, PADRAO, motivo)
 
 
 def explicar(ctx: ContextoExplicacao, cliente: ClienteGemini | None = None) -> ResultadoExplicacao:
+    """Sempre devolve uma explicacao, mesmo com erro inesperado na camada de IA."""
+    try:
+        return _explicar_com_ia(ctx, cliente)
+    except Exception as erro:  # noqa: BLE001 - nenhum calculo fica sem explicacao
+        log.exception("erro inesperado na explicacao com IA")
+        return explicar_com_padrao(ctx, f"erro inesperado: {type(erro).__name__}")
+
+
+def _explicar_com_ia(ctx: ContextoExplicacao, cliente: ClienteGemini | None) -> ResultadoExplicacao:
     cliente = cliente if cliente is not None else criar_cliente()
     if not cliente.configurado:
-        return _padrao(ctx, "GEMINI_API_KEY nao configurada")
+        return explicar_com_padrao(ctx, "GEMINI_API_KEY nao configurada")
 
     contexto = ctx.como_dict()
     modelos = [cliente.modelo]
@@ -53,16 +81,16 @@ def explicar(ctx: ContextoExplicacao, cliente: ClienteGemini | None = None) -> R
         modelos.append(cliente.modelo_reserva)
 
     explicacao, falhas = None, []
-    for modelo in modelos:
+    for modelo in modelos:  # principal, depois UMA tentativa no reserva
         try:
             explicacao = cliente.gerar(contexto, modelo)
             break
         except GeminiIndisponivel as erro:
             falhas.append(f"{modelo}: {erro}")
     if explicacao is None:
-        return _padrao(ctx, "; ".join(falhas))
+        return explicar_com_padrao(ctx, "; ".join(falhas))
 
     validacao = validar_explicacao(explicacao, contexto)
     if not validacao.ok:
-        return _padrao(ctx, "validador reprovou: " + "; ".join(validacao.invalidos))
+        return explicar_com_padrao(ctx, "validador reprovou: " + "; ".join(validacao.invalidos))
     return ResultadoExplicacao(explicacao, GEMINI)
